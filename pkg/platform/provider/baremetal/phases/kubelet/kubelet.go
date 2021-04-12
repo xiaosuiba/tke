@@ -47,17 +47,14 @@ func Install(s ssh.Interface, version string) (err error) {
 		file = path.Join(constants.DstBinDir, file)
 		if ok, err := s.Exist(file); err == nil && ok {
 			backupFile, err := ssh.BackupFile(s, file)
-			if err != nil {
-				return fmt.Errorf("backup file %q error: %w", file, err)
+			if err == nil {
+				continue
 			}
-			defer func() {
-				if err == nil {
-					return
-				}
-				if err = ssh.RestoreFile(s, backupFile); err != nil {
-					err = fmt.Errorf("restore file %q error: %w", backupFile, err)
-				}
-			}()
+			err = fmt.Errorf("backup file %q error: %w", file, err)
+			if restoreErr := ssh.RestoreFile(s, backupFile); restoreErr != nil {
+				err = fmt.Errorf("error: %v, restore failed: %v", err, restoreErr)
+			}
+			return err
 		}
 	}
 
